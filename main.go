@@ -3,31 +3,28 @@ package main
 import (
 	http "net/http"
 
-	"firtService/handlers"
-	"firtService/middleware"
-	"firtService/storage"
+	"github.com/fnuritdinov/firstService/handlers"
+	"github.com/fnuritdinov/firstService/middleware"
+	"github.com/fnuritdinov/firstService/service"
+	"github.com/fnuritdinov/firstService/storage"
 )
 
 func main() {
 
-	st := &storage.UserStorage{
-		FileName: "data/users.json",
-	}
-
-	h := &handlers.UserHandler{
-		Storage: st,
-	}
+	userStorage := storage.NewUserStorage("data/user.json")
+	userService := service.NewUserService(userStorage)
+	userHandler := handlers.NewUserHandler(userService)
 
 	mux := http.NewServeMux()
 
 	handler := middleware.Logging(
 		middleware.Auth(mux))
 
-	mux.HandleFunc("GET /users", h.GetUsers)
-	mux.HandleFunc("POST /users", h.CreateUser)
-	mux.HandleFunc("GET /users/{ID}", h.GetUserByID)
-	mux.HandleFunc("PUT /users/{ID}", h.UpdateUser)
-	mux.HandleFunc("/users/{id}", h.DeleteUser)
+	mux.HandleFunc("GET /users", userHandler.GetUsers)
+	mux.HandleFunc("POST /users", userHandler.CreateUser)
+	mux.HandleFunc("GET /users/{id}", userHandler.GetUserByID)
+	mux.HandleFunc("PUT /users/{id}", userHandler.UpdateUser)
+	mux.HandleFunc("/users/{id}", userHandler.DeleteUser)
 
 	http.ListenAndServe(":8080", handler)
 }

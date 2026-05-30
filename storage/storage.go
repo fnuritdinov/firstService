@@ -1,13 +1,9 @@
 package storage
 
 import (
-	"bufio"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/fnuritdinov/firstService/models"
@@ -18,78 +14,84 @@ type UserStorage struct {
 	FileName string
 }
 
+func NewUserStorage(filename string) *UserStorage {
+	return &UserStorage{
+		FileName: filename,
+	}
+}
+
 func (s *UserStorage) GetAll() ([]models.User, error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
+
 	var users []models.User
 
 	slFile, err := os.ReadFile(s.FileName)
 	if err != nil {
-		return []models.User{}, err
+		fmt.Println("ReadFile error:", err)
+		return nil, err
 	}
 
 	err = json.Unmarshal(slFile, &users)
 	if err != nil {
-		return []models.User{}, err
+		fmt.Println("Unmarshal error:", err)
+		return nil, err
 	}
+
 	return users, nil
 }
 
-func (s *UserStorage) GetByID(id int) (*models.User, error) {
+func (s *UserStorage) GetByID(id int) (models.User, error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-	file, err := os.Open(s.FileName)
+
+	file, err := os.ReadFile(s.FileName)
 	if err != nil {
-		return nil, err
+		return models.User{}, models.ErrorFromFile
 	}
-	defer file.Close()
 
-	scanner := bufio.NewScanner(file)
+	var users []models.User
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		field := strings.Fields(line)
+	err = json.Unmarshal(file, &users)
+	if err != nil {
+		return models.User{}, models.ErrorParsingData
+	}
 
-		if len(field) < 2 {
-			continue
-		}
-
-		num, err := strconv.Atoi(field[0])
-		if err != nil {
-			continue
-		}
-		if num == id {
-			user := &models.User{
-				ID:   num,
-				Name: field[1],
-			}
+	for _, user := range users {
+		if user.ID == id {
 			return user, nil
 		}
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return nil, errors.New("user not found")
 
+	return models.User{}, models.ErrorNotFound
 }
 
 func (s *UserStorage) Create(user models.User) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
-	file, err := os.OpenFile("users.json", os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
 
-	_, err = file.WriteString(fmt.Sprintf("%d %s", user.ID, user.Name))
+	var users []models.User
+	file, err := os.ReadFile(s.FileName)
 	if err != nil {
-		return err
+		return models.ErrorFromFile
+	}
+	_ = json.Unmarshal(file, &users)
+
+	users = append(users, user)
+
+	newData, err := json.Marshal(users)
+	if err != nil {
+		return models.ErrorParsingData
+	}
+
+	err = os.WriteFile(s.FileName, newData, 0644)
+	if err != nil {
+		return models.ErrorFromFile
 	}
 	return nil
 }
 
-func (s *UserStorage) Update(id int, updatedUser models.User) error {
+func (s *UserStorage) Update(id int, updatedUser string) error {
 
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
@@ -106,28 +108,21 @@ func (s *UserStorage) Update(id int, updatedUser models.User) error {
 		return err
 	}
 
-	found := false
-
 	for i, user := range users {
 		if user.ID == id {
-			users[i].Name = updatedUser.Name
-			found = true
+			users[i].Name = updatedUser
 			break
 		}
 	}
 
 	newData, err := json.Marshal(users)
 	if err != nil {
-		return err
-	}
-
-	if !found {
-		return errors.New("user not found")
+		return models.ErrorParsingData
 	}
 
 	err = os.WriteFile(s.FileName, newData, 0644)
 	if err != nil {
-		return err
+		return models.ErrorFromFile
 	}
 	return nil
 }
@@ -138,14 +133,14 @@ func (s *UserStorage) Delete(id int) error {
 
 	bt, err := os.ReadFile(s.FileName)
 	if err != nil {
-		return err
+		return models.ErrorFromFile
 	}
 
 	var users []models.User
 
 	err = json.Unmarshal(bt, &users)
 	if err != nil {
-		return err
+		return models.ErrorParsingData
 	}
 
 	for idx, value := range users {
@@ -153,6 +148,15 @@ func (s *UserStorage) Delete(id int) error {
 			users = append(users[:idx], users[idx+1:]...)
 			break
 		}
+	}
+	btData, err := json.Marshal(users)
+	if err != nil {
+		return models.ErrorParsingData
+	}
+
+	err = os.WriteFile(s.FileName, btData, 0644)
+	if err != nil {
+		return models.ErrorFromFile
 	}
 	return nil
 }

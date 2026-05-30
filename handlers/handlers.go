@@ -2,60 +2,73 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/fnuritdinov/firstService/models"
-	"github.com/fnuritdinov/firstService/storage"
+	"github.com/fnuritdinov/firstService/service"
 )
 
 type UserHandler struct {
-	Storage *storage.UserStorage
+	service *service.UserService
+}
+
+func NewUserHandler(service *service.UserService) *UserHandler {
+	return &UserHandler{
+		service: service,
+	}
 }
 
 func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 
-	users, err := h.Storage.GetAll()
+	users, err := h.service.GetUsers()
 	if err != nil {
+		fmt.Println("Ошибка в сервисе handler/GetUsers")
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(users)
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	id := models.StrToInt(idStr)
 
-	user, err := h.Storage.GetByID(id)
+	user, err := h.service.GetUserByID(id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
+		fmt.Println("Ошибка в сервисе handler/GetUserByID")
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
-	json.NewEncoder(w).Encode(user)
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		fmt.Println("encode error:", err)
+		return
+	}
+
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
+		fmt.Println("Ошибка при парсинге hanlder/CreateUser")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	err = h.Storage.Create(user)
+	err = h.service.Create(user)
 	if err != nil {
+		fmt.Println("Ошибка в сервисе handler/CreateUser")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -70,41 +83,36 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	idStr := r.PathValue("id")
 
-	id, err := strconv.Atoi(idStr)
+	id := models.StrToInt(idStr)
+
+	var user models.User
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
+		fmt.Println("Ошибка при парсинге handler/UpdateUser")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	var user models.User
-	err = json.NewDecoder(r.Body).Decode(&user)
+	err = h.service.Update(id, user.Name)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-	}
-
-	err = h.Storage.Update(id, user)
-	if err != nil {
+		fmt.Println("Ошибка в сервисе handler/UpdateUser")
 		http.Error(w, err.Error(), http.StatusNotFound)
+		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	json.NewEncoder(w)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
-	id, err := strconv.Atoi(idStr)
+	id := models.StrToInt(idStr)
+
+	err := h.service.Delete(id)
+	fmt.Println("Ошибка в сервисе handler/DeleteUser")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	}
-
-	err = h.Storage.Delete(id)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	w.WriteHeader(http.StatusOK)
