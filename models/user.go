@@ -1,8 +1,10 @@
 package models
 
 import (
-	"errors"
+	_ "errors"
 	"strconv"
+
+	"github.com/fnuritdinov/firstService/pkg/errors"
 )
 
 type User struct {
@@ -10,25 +12,16 @@ type User struct {
 	Name string `json:"name"`
 }
 
-var ErrorNotFound = errors.New("not found")
-var ErrorParsingData = errors.New("error on parsing")
-var ErrorFromFile = errors.New("error on file")
-var ErrorJSONEncode = errors.New("error on encode")
-var ErrorFromConvert = errors.New("error from convert")
-var ErrorFromValidateID = errors.New("id must be greater than 0")
-var ErrorFromValidateStrEmpty = errors.New("string is empty")
-var ErrorJSONDecoder = errors.New("error on decode")
-
-func ValidateID(id int) error {
-	if id < 1 {
-		return ErrorFromValidateID
+func (u *User) ValidateID() error {
+	if u.ID < 1 {
+		return errors.ErrorFromValidateID
 	}
 	return nil
 }
 
-func ValidateStrEmpty(name string) error {
-	if len(name) == 0 {
-		return ErrorFromValidateStrEmpty
+func (u *User) ValidateStrEmpty() error {
+	if len(u.Name) == 0 {
+		return errors.ErrorFromValidateStrEmpty
 	}
 	return nil
 }

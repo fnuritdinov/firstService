@@ -6,16 +6,20 @@ import (
 	"net/http"
 
 	"github.com/fnuritdinov/firstService/models"
+	"github.com/fnuritdinov/firstService/pkg/logger"
 	"github.com/fnuritdinov/firstService/service"
+	"go.uber.org/zap"
 )
 
 type UserHandler struct {
 	service *service.UserService
+	logger  logger.Logger
 }
 
-func NewUserHandler(service *service.UserService) *UserHandler {
+func NewUserHandler(service *service.UserService, logger logger.Logger) *UserHandler {
 	return &UserHandler{
 		service: service,
+		logger:  logger,
 	}
 }
 
@@ -23,7 +27,7 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 
 	users, err := h.service.GetUsers()
 	if err != nil {
-		fmt.Println("Ошибка в сервисе handler/GetUsers")
+		h.logger.Error("error from service", zap.String("method", "GetUsers"))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -62,13 +66,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		fmt.Println("Ошибка при парсинге hanlder/CreateUser")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	err = h.service.Create(user)
 	if err != nil {
-		fmt.Println("Ошибка в сервисе handler/CreateUser")
+		h.logger.Error("error from service",
+			zap.String("method", "Create"))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
@@ -88,14 +92,14 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		fmt.Println("Ошибка при парсинге handler/UpdateUser")
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	err = h.service.Update(id, user.Name)
 	if err != nil {
-		fmt.Println("Ошибка в сервисе handler/UpdateUser")
+		h.logger.Error("error from service",
+			zap.String("method", "Update"))
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
@@ -109,7 +113,8 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	id := models.StrToInt(idStr)
 
 	err := h.service.Delete(id)
-	fmt.Println("Ошибка в сервисе handler/DeleteUser")
+	h.logger.Error("error from service",
+		zap.String("method", "Delete"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

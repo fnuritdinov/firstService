@@ -1,9 +1,9 @@
 package service
 
 import (
-	"fmt"
-
 	"github.com/fnuritdinov/firstService/models"
+	"github.com/fnuritdinov/firstService/pkg/errors"
+	"github.com/fnuritdinov/firstService/pkg/utils"
 	"github.com/fnuritdinov/firstService/storage"
 )
 
@@ -12,81 +12,78 @@ type UserService struct {
 }
 
 func NewUserService(storage *storage.UserStorage) *UserService {
-	return &UserService{storage: storage}
+	return &UserService{
+		storage: storage,
+	}
 }
 
 func (u UserService) GetUsers() ([]models.User, error) {
 	users, err := u.storage.GetAll()
 	if err != nil {
-		fmt.Println("storage error ", err)
 		return nil, err
 	}
 	return users, nil
 }
 
 func (u UserService) GetUserByID(id int) (models.User, error) {
-	err := models.ValidateID(id)
+	err := utils.ValidateID(id)
 	if err != nil {
-		return models.User{}, models.ErrorFromValidateID
+		return models.User{}, errors.ErrorFromValidateID
 	}
 
 	user, err := u.storage.GetByID(id)
 	if err != nil {
-		fmt.Println("Ошибка в бд GetByID")
-		return models.User{}, models.ErrorNotFound
+		return models.User{}, err
 	}
 	return user, nil
 }
 
 func (u UserService) Create(user models.User) error {
-	err := models.ValidateID(user.ID)
+	err := user.ValidateID()
 	if err != nil {
-		return models.ErrorFromValidateID
+		return errors.ErrorFromValidateStrEmpty
 	}
 
-	err = models.ValidateStrEmpty(user.Name)
+	err = user.ValidateStrEmpty()
 	if err != nil {
-		return models.ErrorFromValidateStrEmpty
+		return errors.ErrorFromValidateStrEmpty
 	}
 
 	err = u.storage.Create(user)
 	if err != nil {
-		fmt.Println("Ошибка в бд Create")
-		return models.ErrorNotFound
+		return errors.ErrorNotFound
 	}
 	return nil
 
 }
 
-func (u UserService) Update(id int, name string) error {
-	err := models.ValidateID(id)
+func (u UserService) Update(id int, updatedName string) error {
+	err := utils.ValidateID(id)
 	if err != nil {
-		return models.ErrorFromValidateID
+		return errors.ErrorFromValidateID
 	}
 
-	err = models.ValidateStrEmpty(name)
+	err = utils.ValidateStrEmpty(updatedName)
 	if err != nil {
-		return models.ErrorFromValidateStrEmpty
+		return errors.ErrorFromValidateStrEmpty
 	}
 
-	err = u.storage.Update(id, name)
+	err = u.storage.Update(id, updatedName)
 	if err != nil {
-		fmt.Println("Ошибка в бд Update")
-		return models.ErrorNotFound
+		return errors.ErrorNotFound
 	}
 	return nil
 }
 
 func (u UserService) Delete(id int) error {
-	err := models.ValidateID(id)
+	err := utils.ValidateID(id)
 	if err != nil {
-		return models.ErrorFromValidateID
+		return errors.ErrorFromValidateID
 	}
 
 	err = u.storage.Delete(id)
 	if err != nil {
-		fmt.Println("Ошибка в бд Delete")
-		return models.ErrorNotFound
+		return errors.ErrorNotFound
 	}
 	return nil
 }
