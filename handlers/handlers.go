@@ -2,12 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"net/http"
 
-	"github.com/fnuritdinov/firstService/models"
+	"github.com/fnuritdinov/firstService/internal/models"
+	"github.com/fnuritdinov/firstService/internal/service"
+	errs "github.com/fnuritdinov/firstService/pkg/errors"
 	"github.com/fnuritdinov/firstService/pkg/logger"
-	"github.com/fnuritdinov/firstService/service"
+	"github.com/fnuritdinov/firstService/pkg/utils"
 	"go.uber.org/zap"
 )
 
@@ -23,63 +25,82 @@ func NewUserHandler(service *service.UserService, logger logger.Logger) *UserHan
 	}
 }
 
-func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
+type userRequest struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
 
-	users, err := h.service.GetUsers()
+func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+
+	users, err := h.service.GetAll(r.Context())
 	if err != nil {
-		h.logger.Error("error from service", zap.String("method", "GetUsers"))
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		h.logger.Error("error from service", zap.Error(err))
+		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	err = json.NewEncoder(w).Encode(users)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 }
 
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
-	id := models.StrToInt(idStr)
+	id := utils.StrToInt(idStr)
 
 	user, err := h.service.GetUserByID(id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
-		fmt.Println("Ошибка в сервисе handler/GetUserByID")
+		if errors.Is(err, errs.ErrorFromValidateID) {
+			h.logger.Error("error from validate",
+				zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-
 	if err := json.NewEncoder(w).Encode(user); err != nil {
-		fmt.Println("encode error:", err)
+		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
 	}
 
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user models.User
+	var user userRequest
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	err = h.service.Create(user)
+	err = h.service.Create(r.Context(), models.User{
+		ID:   user.ID,
+		Name: user.Name,
+	})
 	if err != nil {
-		h.logger.Error("error from service",
-			zap.String("method", "Create"))
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
+			h.logger.Error("error from ValidateStrEmty",
+				zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if errors.Is(err, errs.ErrorFromValidateID) {
+			h.logger.Error("error from ValidateID",
+				zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
+
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "user created",
-	})
 
 }
 
@@ -87,7 +108,7 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	idStr := r.PathValue("id")
 
-	id := models.StrToInt(idStr)
+	id := utils.StrToInt(idStr)
 
 	var user models.User
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -98,9 +119,19 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.Update(id, user.Name)
 	if err != nil {
+		if errors.Is(err, errs.ErrorFromValidateID) {
+			h.logger.Error("error from ValidateID", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
+			h.logger.Error("error from ValidateStrEmpty", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		h.logger.Error("error from service",
-			zap.String("method", "Update"))
-		http.Error(w, err.Error(), http.StatusNotFound)
+			zap.Error(err))
+		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
 	}
 
@@ -110,13 +141,18 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
-	id := models.StrToInt(idStr)
+	id := utils.StrToInt(idStr)
 
 	err := h.service.Delete(id)
 	h.logger.Error("error from service",
-		zap.String("method", "Delete"))
+		zap.Error(err))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		if errors.Is(err, errs.ErrorFromValidateID) {
+			h.logger.Error("error from ValidateID", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
 	}
 

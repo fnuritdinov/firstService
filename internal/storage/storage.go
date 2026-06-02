@@ -1,11 +1,13 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"sync"
 
-	"github.com/fnuritdinov/firstService/models"
+	"github.com/fnuritdinov/firstService/internal/models"
 	"github.com/fnuritdinov/firstService/pkg/errors"
 )
 
@@ -20,7 +22,7 @@ func NewUserStorage(filename string) *UserStorage {
 	}
 }
 
-func (s *UserStorage) GetAll() ([]models.User, error) {
+func (s *UserStorage) GetAll(ctx context.Context) ([]models.User, error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 
@@ -28,11 +30,13 @@ func (s *UserStorage) GetAll() ([]models.User, error) {
 
 	slFile, err := os.ReadFile(s.FileName)
 	if err != nil {
+		fmt.Errorf("error from os.ReadFile %w", err)
 		return nil, err
 	}
 
 	err = json.Unmarshal(slFile, &users)
 	if err != nil {
+		fmt.Errorf("error from json.Unmarshal %w", err)
 		return nil, err
 	}
 
@@ -45,6 +49,7 @@ func (s *UserStorage) GetByID(id int) (models.User, error) {
 
 	file, err := os.ReadFile(s.FileName)
 	if err != nil {
+		fmt.Errorf("error from os.ReadFile %w", err)
 		return models.User{}, errors.ErrorFromFile
 	}
 
@@ -52,6 +57,7 @@ func (s *UserStorage) GetByID(id int) (models.User, error) {
 
 	err = json.Unmarshal(file, &users)
 	if err != nil {
+		fmt.Errorf("error from json.Unmarshal %w", err)
 		return models.User{}, errors.ErrorParsingData
 	}
 
@@ -64,13 +70,14 @@ func (s *UserStorage) GetByID(id int) (models.User, error) {
 	return models.User{}, errors.ErrorNotFound
 }
 
-func (s *UserStorage) Create(user models.User) error {
+func (s *UserStorage) Create(ctx context.Context, user models.User) error {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 
 	var users []models.User
 	file, err := os.ReadFile(s.FileName)
 	if err != nil {
+		fmt.Errorf("error from os.ReadFile %w", err)
 		return errors.ErrorFromFile
 	}
 	_ = json.Unmarshal(file, &users)
@@ -79,11 +86,13 @@ func (s *UserStorage) Create(user models.User) error {
 
 	newData, err := json.Marshal(users)
 	if err != nil {
+		fmt.Errorf("error from json.Marshal %w", err)
 		return errors.ErrorParsingData
 	}
 
 	err = os.WriteFile(s.FileName, newData, 0644)
 	if err != nil {
+		fmt.Errorf("error from os.WriteFile %w", err)
 		return errors.ErrorFromFile
 	}
 	return nil
@@ -96,6 +105,7 @@ func (s *UserStorage) Update(id int, updatedUser string) error {
 
 	btData, err := os.ReadFile(s.FileName)
 	if err != nil {
+		fmt.Errorf("error from os.ReadFile", err)
 		return err
 	}
 
@@ -103,6 +113,7 @@ func (s *UserStorage) Update(id int, updatedUser string) error {
 
 	err = json.Unmarshal(btData, &users)
 	if err != nil {
+		fmt.Errorf("error from json.Unmarshal %w", err)
 		return err
 	}
 
@@ -115,11 +126,13 @@ func (s *UserStorage) Update(id int, updatedUser string) error {
 
 	newData, err := json.Marshal(users)
 	if err != nil {
+		fmt.Errorf("error from json.Marshal %w", err)
 		return errors.ErrorParsingData
 	}
 
 	err = os.WriteFile(s.FileName, newData, 0644)
 	if err != nil {
+		fmt.Errorf("error from os.WriteFile %w", err)
 		return errors.ErrorFromFile
 	}
 	return nil
@@ -131,6 +144,7 @@ func (s *UserStorage) Delete(id int) error {
 
 	bt, err := os.ReadFile(s.FileName)
 	if err != nil {
+		fmt.Errorf("error from os.ReadFile %w", err)
 		return errors.ErrorFromFile
 	}
 
@@ -138,6 +152,7 @@ func (s *UserStorage) Delete(id int) error {
 
 	err = json.Unmarshal(bt, &users)
 	if err != nil {
+		fmt.Errorf("error from json.Unmarshal %w", err)
 		return errors.ErrorParsingData
 	}
 
@@ -149,11 +164,13 @@ func (s *UserStorage) Delete(id int) error {
 	}
 	btData, err := json.Marshal(users)
 	if err != nil {
+		fmt.Errorf("error from json.Marshal %w", err)
 		return errors.ErrorParsingData
 	}
 
 	err = os.WriteFile(s.FileName, btData, 0644)
 	if err != nil {
+		fmt.Errorf("error from os.WriteFile %w", err)
 		return errors.ErrorFromFile
 	}
 	return nil

@@ -2,7 +2,6 @@ package models
 
 import (
 	_ "errors"
-	"strconv"
 
 	"github.com/fnuritdinov/firstService/pkg/errors"
 )
@@ -24,13 +23,4 @@ func (u *User) ValidateStrEmpty() error {
 		return errors.ErrorFromValidateStrEmpty
 	}
 	return nil
-}
-
-func StrToInt(str string) int {
-	n, _ := strconv.Atoi(str)
-	return n
-}
-
-func IntToStr(n int) string {
-	return strconv.Itoa(n)
 }

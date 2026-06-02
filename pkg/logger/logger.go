@@ -9,7 +9,7 @@ type Logger struct {
 	*zap.Logger
 }
 
-func New(devMode bool) *Logger {
+func New(devMode bool) (*Logger, error) {
 	var cfg zap.Config
 	if devMode {
 		cfg = zap.NewDevelopmentConfig()
@@ -24,5 +24,7 @@ func New(devMode bool) *Logger {
 	if err != nil {
 		panic(err)
 	}
-	return &Logger{logger}
+	return &Logger{
+		logger,
+	}, nil
 }
