@@ -1,0 +1,3 @@
+log audit {Name:admin Method:Create CreatedAt:2026-06-03 17:08:41.4736485 +0500 +05 m=+16.521276601}
+log audit {Name:admin Method:Create Description:Создал пользователя CreatedAt:2026-06-03 17:12:08.1317611 +0500 +05 m=+9.567979601}
+log audit {Name:admin Method:Сreate Description:Создал пользователя CreatedAt:2026-06-03 17:15:42.9835599 +0500 +05 m=+1.738541201}

@@ -20,18 +20,12 @@ func main() {
 	userService := service.NewUserService(userStorage)
 	userHandler := handlers.NewUserHandler(userService, *logger)
 
-	mux := http.NewServeMux()
+	handler := handlers.New(userHandler)
 
-	handler := middleware.Logging(
-		middleware.Auth(mux))
+	handler2 := middleware.Logging(
+		middleware.Auth(handler))
 
-	mux.HandleFunc("GET /users", userHandler.GetAll)
-	mux.HandleFunc("POST /users", userHandler.CreateUser)
-	mux.HandleFunc("GET /users/{id}", userHandler.GetUserByID)
-	mux.HandleFunc("PUT /users/{id}", userHandler.UpdateUser)
-	mux.HandleFunc("/users/{id}", userHandler.DeleteUser)
-
-	err = http.ListenAndServe(":8080", handler)
+	err = http.ListenAndServe(":8080", handler2)
 	if err != nil {
 		log.Fatal(err)
 	}
