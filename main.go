@@ -35,6 +35,7 @@ func main() {
 	consumer.StartAuditConsumer(ctx, &wg, bus, *logger)
 
 	rate := rate_limiter.New()
+	go rate.WorkerClear(ctx)
 
 	userStorage := storage.NewUserStorage("data/user.json")
 	userService := service.NewUserService(userStorage, bus)
