@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"fmt"
+	"math/rand"
 
 	"github.com/fnuritdinov/firstService/internal/models"
+	"github.com/fnuritdinov/firstService/internal/service/eventBus"
 	"github.com/fnuritdinov/firstService/internal/service/eventLogs"
 	"github.com/fnuritdinov/firstService/internal/storage"
 	"github.com/fnuritdinov/firstService/pkg/errors"
@@ -12,12 +14,14 @@ import (
 )
 
 type UserService struct {
-	storage *storage.UserStorage
+	storage   *storage.UserStorage
+	eventsBus *eventBus.Bus
 }
 
-func NewUserService(storage *storage.UserStorage) *UserService {
+func NewUserService(storage *storage.UserStorage, eventsBus *eventBus.Bus) *UserService {
 	return &UserService{
-		storage: storage,
+		storage:   storage,
+		eventsBus: eventsBus,
 	}
 }
 
@@ -29,16 +33,58 @@ var Users = map[string]string{
 
 const admin = "admin"
 
+func (u UserService) Login(ctx context.Context, user models.User) error {
+	err := utils.ValidateStrEmpty(user.Name)
+	if err != nil {
+		return errors.ErrorFromValidateStrEmpty
+	}
+
+	err = utils.ValidateStrEmpty(user.Password)
+	if err != nil {
+		return errors.ErrorFromValidateStrEmpty
+	}
+
+	err = u.storage.Login(ctx, user)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (u UserService) GetAll(ctx context.Context) ([]models.User, error) {
 	users, err := u.storage.GetAll(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error from u.storage.GetAll: %w", err)
 	}
 
-	err = eventLogs.Audit(admin, "Получил список пользователей", eventLogs.GetAll)
+	err = eventLogs.Audit(rand.Int(), eventLogs.GetAll, "Получил всех пользователей")
 	if err != nil {
-		return nil, fmt.Errorf("error from eventLogs.Audit %w", err)
+		return []models.User{}, fmt.Errorf("error from eventLogs.Audit %w", err)
 	}
+
+	u.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.GetAll,
+		UserID: rand.Int(),
+	})
+
+	return users, nil
+}
+
+func (u UserService) Get(ctx context.Context) ([]models.User, error) {
+	users, err := u.storage.Get(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error from u.storage.GetAll: %w", err)
+	}
+
+	err = eventLogs.Audit(rand.Int(), eventLogs.Get, "Получил активных пользователей")
+	if err != nil {
+		return []models.User{}, fmt.Errorf("error from eventLogs.Audit %w", err)
+	}
+
+	u.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.Get,
+		UserID: rand.Int(),
+	})
 
 	return users, nil
 }
@@ -54,10 +100,16 @@ func (u UserService) GetUserByID(id int) (models.User, error) {
 		return models.User{}, err
 	}
 
-	err = eventLogs.Audit(admin, "Получил пользователя по ID", eventLogs.GetUserByID)
+	err = eventLogs.Audit(rand.Int(), eventLogs.GetUserByID, "Получил пользователя по ID")
 	if err != nil {
 		return models.User{}, fmt.Errorf("error from eventLogs.Audit %w", err)
 	}
+
+	u.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.GetUserByID,
+		UserID: rand.Int(),
+	})
+
 	return user, nil
 }
 
@@ -77,10 +129,15 @@ func (u UserService) Create(ctx context.Context, user models.User) error {
 		return errors.ErrorNotFound
 	}
 
-	err = eventLogs.Audit(admin, "Создал пользователя", eventLogs.Create)
+	err = eventLogs.Audit(rand.Int(), eventLogs.Create, "Создал пользователя")
 	if err != nil {
 		return fmt.Errorf("error from eventLogs.Audit %w", err)
 	}
+
+	u.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.Create,
+		UserID: rand.Int(),
+	})
 
 	return nil
 
@@ -102,10 +159,16 @@ func (u UserService) Update(id int, updatedName string) error {
 		return errors.ErrorNotFound
 	}
 
-	err = eventLogs.Audit(admin, "Изменил пользователя", eventLogs.Update)
+	err = eventLogs.Audit(rand.Int(), eventLogs.Update, "Изменил пользователя")
 	if err != nil {
 		return fmt.Errorf("error from eventLogs.Audit %w", err)
 	}
+
+	u.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.Update,
+		UserID: rand.Int(),
+	})
+
 	return nil
 }
 
@@ -120,9 +183,15 @@ func (u UserService) Delete(id int) error {
 		return errors.ErrorNotFound
 	}
 
-	err = eventLogs.Audit(admin, "Удалил пользователя", eventLogs.Delete)
+	err = eventLogs.Audit(rand.Int(), eventLogs.Delete, "Удалил пользователя")
 	if err != nil {
 		return fmt.Errorf("error from eventLogs.Audit %w", err)
 	}
+
+	u.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.Delete,
+		UserID: rand.Int(),
+	})
+
 	return nil
 }

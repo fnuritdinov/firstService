@@ -30,12 +30,58 @@ type userRequest struct {
 	Name string `json:"name"`
 }
 
+type loginRequest struct {
+	Name     string `json:"name"`
+	Password string `json:"password"`
+}
+
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		h.logger.Error("error from json.NewDecoder", zap.Error(err))
+		http.Error(w, "error from json.NewDecocder", http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.Login(r.Context(), models.User{
+		Name:     req.Name,
+		Password: req.Password,
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
+			h.logger.Error("error from validateStrEmpty", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 
 	users, err := h.service.GetAll(r.Context())
 	if err != nil {
-		h.logger.Error("error from service", zap.Error(err))
-		http.Error(w, "invalid request", http.StatusInternalServerError)
+		h.logger.Error("error from h.service.GetAll", zap.Error(err))
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
+	users, err := h.service.Get(r.Context())
+	if err != nil {
+		h.logger.Error("error from h.service.GetAll", zap.Error(err))
+		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 
@@ -78,12 +124,13 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = h.service.Create(r.Context(), models.User{
-		ID:   user.ID,
-		Name: user.Name,
+		ID:       user.ID,
+		Name:     user.Name,
+		IsActive: true,
 	})
 	if err != nil {
 		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
-			h.logger.Error("error from ValidateStrEmty",
+			h.logger.Error("error from errs.ErrorFromValidateStrEmpty",
 				zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

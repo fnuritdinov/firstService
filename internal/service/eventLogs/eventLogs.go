@@ -1,7 +1,6 @@
 package eventLogs
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -10,7 +9,7 @@ import (
 )
 
 type EventLogs struct {
-	Name        string
+	UserID      int
 	Method      string
 	Description string
 	CreatedAt   time.Time
@@ -21,29 +20,30 @@ const GetAll = "GetAll"
 const GetUserByID = "GetUserByID"
 const Update = "Update"
 const Delete = "Delete"
+const Get = "Get"
 
-func Audit(name string, description string, method string) error {
-	if name == "" {
-		return errors.New("name is empty")
-	}
+func Audit(userID int, method, description string) error {
 
 	switch method {
 	case Create:
-		fmt.Printf("%s создал пользователя ", name)
+		fmt.Println("%d создал пользователя ", userID)
 	case GetAll:
-		fmt.Printf("%s получил всех пользователей", name)
+		fmt.Printf("%d получил всех пользователей", userID)
 	case GetUserByID:
-		fmt.Printf("%s получил пользователя по айди", name)
+		fmt.Printf("%d получил пользователя по айди", userID)
 	case Update:
-		fmt.Printf("%s изменил пользователя", name)
+		fmt.Printf("%d изменил пользователя", userID)
 	case Delete:
-		fmt.Printf("%s удалил пользователя", name)
+		fmt.Printf("%d удалил пользователя", userID)
+	case Get:
+		fmt.Printf("%d получил активных пользователя", userID)
+
 	default:
 		fmt.Println("unknown audit method")
 	}
 
 	log := EventLogs{
-		Name:        name,
+		UserID:      userID,
 		Method:      method,
 		Description: description,
 		CreatedAt:   time.Now(),

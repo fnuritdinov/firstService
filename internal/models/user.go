@@ -7,8 +7,11 @@ import (
 )
 
 type User struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID       int    `json:"id"`
+	Name     string `json:"name"`
+	Age      int    `json:"age"`
+	Password string `json:"password"`
+	IsActive bool   `json:"IsActive"`
 }
 
 func (u *User) ValidateID() error {
