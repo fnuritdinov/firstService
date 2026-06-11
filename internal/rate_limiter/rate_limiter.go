@@ -19,7 +19,6 @@ type RequestUserInfo struct {
 
 func New() *RateLimiter {
 	return &RateLimiter{
-		mu:      sync.Mutex{},
 		request: make(map[int]RequestUserInfo),
 	}
 }

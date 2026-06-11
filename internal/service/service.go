@@ -25,23 +25,10 @@ func NewUserService(storage *storage.UserStorage, eventsBus *eventBus.Bus) *User
 	}
 }
 
-var Users = map[string]string{
-	"user1": "Ali",
-	"user2": "Vali",
-	"user3": "Anton",
-}
-
-const admin = "admin"
-
 func (u UserService) Login(ctx context.Context, user models.User) error {
-	err := utils.ValidateStrEmpty(user.Name)
+	err := user.Validate()
 	if err != nil {
-		return errors.ErrorFromValidateStrEmpty
-	}
-
-	err = utils.ValidateStrEmpty(user.Password)
-	if err != nil {
-		return errors.ErrorFromValidateStrEmpty
+		return errors.ErrFromValidate
 	}
 
 	err = u.storage.Login(ctx, user)
@@ -89,13 +76,13 @@ func (u UserService) Get(ctx context.Context) ([]models.User, error) {
 	return users, nil
 }
 
-func (u UserService) GetUserByID(id int) (models.User, error) {
+func (u UserService) GetUserByID(ctx context.Context, id int) (models.User, error) {
 	err := utils.ValidateID(id)
 	if err != nil {
-		return models.User{}, errors.ErrorFromValidateID
+		return models.User{}, errors.ErrFromValidateID
 	}
 
-	user, err := u.storage.GetByID(id)
+	user, err := u.storage.GetByID(ctx, id)
 	if err != nil {
 		return models.User{}, err
 	}
@@ -114,19 +101,14 @@ func (u UserService) GetUserByID(id int) (models.User, error) {
 }
 
 func (u UserService) Create(ctx context.Context, user models.User) error {
-	err := user.ValidateID()
+	err := user.Validate()
 	if err != nil {
-		return errors.ErrorFromValidateStrEmpty
-	}
-
-	err = user.ValidateStrEmpty()
-	if err != nil {
-		return errors.ErrorFromValidateStrEmpty
+		return errors.ErrFromValidate
 	}
 
 	err = u.storage.Create(ctx, user)
 	if err != nil {
-		return errors.ErrorNotFound
+		return errors.ErrNotFound
 	}
 
 	err = eventLogs.Audit(rand.Int(), eventLogs.Create, "Создал пользователя")
@@ -143,20 +125,20 @@ func (u UserService) Create(ctx context.Context, user models.User) error {
 
 }
 
-func (u UserService) Update(id int, updatedName string) error {
+func (u UserService) Update(ctx context.Context, id int, updatedName string) error {
 	err := utils.ValidateID(id)
 	if err != nil {
-		return errors.ErrorFromValidateID
+		return errors.ErrFromValidateID
 	}
 
 	err = utils.ValidateStrEmpty(updatedName)
 	if err != nil {
-		return errors.ErrorFromValidateStrEmpty
+		return errors.ErrFromValidate
 	}
 
-	err = u.storage.Update(id, updatedName)
+	err = u.storage.Update(ctx, id, updatedName)
 	if err != nil {
-		return errors.ErrorNotFound
+		return errors.ErrNotFound
 	}
 
 	err = eventLogs.Audit(rand.Int(), eventLogs.Update, "Изменил пользователя")
@@ -172,15 +154,15 @@ func (u UserService) Update(id int, updatedName string) error {
 	return nil
 }
 
-func (u UserService) Delete(id int) error {
+func (u UserService) Delete(ctx context.Context, id int) error {
 	err := utils.ValidateID(id)
 	if err != nil {
-		return errors.ErrorFromValidateID
+		return errors.ErrFromValidateID
 	}
 
-	err = u.storage.Delete(id)
+	err = u.storage.Delete(ctx, id)
 	if err != nil {
-		return errors.ErrorNotFound
+		return errors.ErrNotFound
 	}
 
 	err = eventLogs.Audit(rand.Int(), eventLogs.Delete, "Удалил пользователя")

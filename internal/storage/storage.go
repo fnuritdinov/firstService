@@ -12,28 +12,28 @@ import (
 )
 
 type UserStorage struct {
-	Mu       sync.Mutex
-	FileName string
+	mu       sync.Mutex
+	fileName string
 }
 
 func NewUserStorage(filename string) *UserStorage {
 	return &UserStorage{
-		FileName: filename,
+		fileName: filename,
 	}
 }
 
 func (s *UserStorage) Login(ctx context.Context, request models.User) error {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var users []models.User
 
-	byteDate, err := os.ReadFile(s.FileName)
+	byteDate, err := os.ReadFile(s.fileName)
 	if err != nil {
-		return errors.ErrorFromFile
+		return errors.ErrFromFile
 	}
 	err = json.Unmarshal(byteDate, &users)
 	if err != nil {
-		return errors.ErrorParsingData
+		return errors.ErrParsingData
 	}
 
 	for _, user := range users {
@@ -45,15 +45,15 @@ func (s *UserStorage) Login(ctx context.Context, request models.User) error {
 		}
 	}
 
-	return errors.ErrorNotFound
+	return errors.ErrNotFound
 }
 func (s *UserStorage) GetAll(ctx context.Context) ([]models.User, error) {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	var users []models.User
 
-	slFile, err := os.ReadFile(s.FileName)
+	slFile, err := os.ReadFile(s.fileName)
 	if err != nil {
 		fmt.Errorf("error from os.ReadFile %w", err)
 		return nil, err
@@ -69,12 +69,12 @@ func (s *UserStorage) GetAll(ctx context.Context) ([]models.User, error) {
 }
 
 func (s *UserStorage) Get(ctx context.Context) ([]models.User, error) {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	var users []models.User
 
-	slFile, err := os.ReadFile(s.FileName)
+	slFile, err := os.ReadFile(s.fileName)
 	if err != nil {
 		fmt.Errorf("error from os.ReadFile %w", err)
 		return nil, err
@@ -88,7 +88,7 @@ func (s *UserStorage) Get(ctx context.Context) ([]models.User, error) {
 	var activeUsers []models.User
 
 	for _, user := range users {
-		if user.IsActive == true {
+		if user.IsActive {
 			activeUsers = append(activeUsers, user)
 		}
 	}
@@ -96,14 +96,14 @@ func (s *UserStorage) Get(ctx context.Context) ([]models.User, error) {
 	return activeUsers, nil
 }
 
-func (s *UserStorage) GetByID(id int) (models.User, error) {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+func (s *UserStorage) GetByID(ctx context.Context, id int) (models.User, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	file, err := os.ReadFile(s.FileName)
+	file, err := os.ReadFile(s.fileName)
 	if err != nil {
 		fmt.Errorf("error from os.ReadFile %w", err)
-		return models.User{}, errors.ErrorFromFile
+		return models.User{}, errors.ErrFromFile
 	}
 
 	var users []models.User
@@ -111,7 +111,7 @@ func (s *UserStorage) GetByID(id int) (models.User, error) {
 	err = json.Unmarshal(file, &users)
 	if err != nil {
 		fmt.Errorf("error from json.Unmarshal %w", err)
-		return models.User{}, errors.ErrorParsingData
+		return models.User{}, errors.ErrParsingData
 	}
 
 	for _, user := range users {
@@ -120,18 +120,18 @@ func (s *UserStorage) GetByID(id int) (models.User, error) {
 		}
 	}
 
-	return models.User{}, errors.ErrorNotFound
+	return models.User{}, errors.ErrNotFound
 }
 
 func (s *UserStorage) Create(ctx context.Context, user models.User) error {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	var users []models.User
-	file, err := os.ReadFile(s.FileName)
+	file, err := os.ReadFile(s.fileName)
 	if err != nil {
 		fmt.Errorf("error from os.ReadFile %w", err)
-		return errors.ErrorFromFile
+		return errors.ErrFromFile
 	}
 	_ = json.Unmarshal(file, &users)
 
@@ -140,23 +140,23 @@ func (s *UserStorage) Create(ctx context.Context, user models.User) error {
 	newData, err := json.Marshal(users)
 	if err != nil {
 		fmt.Errorf("error from json.Marshal %w", err)
-		return errors.ErrorParsingData
+		return errors.ErrParsingData
 	}
 
-	err = os.WriteFile(s.FileName, newData, 0644)
+	err = os.WriteFile(s.fileName, newData, 0644)
 	if err != nil {
 		fmt.Errorf("error from os.WriteFile %w", err)
-		return errors.ErrorFromFile
+		return errors.ErrFromFile
 	}
 	return nil
 }
 
-func (s *UserStorage) Update(id int, updatedUser string) error {
+func (s *UserStorage) Update(ctx context.Context, id int, updatedUser string) error {
 
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	btData, err := os.ReadFile(s.FileName)
+	btData, err := os.ReadFile(s.fileName)
 	if err != nil {
 		fmt.Errorf("error from os.ReadFile", err)
 		return err
@@ -180,25 +180,25 @@ func (s *UserStorage) Update(id int, updatedUser string) error {
 	newData, err := json.Marshal(users)
 	if err != nil {
 		fmt.Errorf("error from json.Marshal %w", err)
-		return errors.ErrorParsingData
+		return errors.ErrParsingData
 	}
 
-	err = os.WriteFile(s.FileName, newData, 0644)
+	err = os.WriteFile(s.fileName, newData, 0644)
 	if err != nil {
 		fmt.Errorf("error from os.WriteFile %w", err)
-		return errors.ErrorFromFile
+		return errors.ErrFromFile
 	}
 	return nil
 }
 
-func (s *UserStorage) Delete(id int) error {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
+func (s *UserStorage) Delete(ctx context.Context, id int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	bt, err := os.ReadFile(s.FileName)
+	bt, err := os.ReadFile(s.fileName)
 	if err != nil {
 		fmt.Errorf("error from os.ReadFile %w", err)
-		return errors.ErrorFromFile
+		return errors.ErrFromFile
 	}
 
 	var users []models.User
@@ -206,12 +206,12 @@ func (s *UserStorage) Delete(id int) error {
 	err = json.Unmarshal(bt, &users)
 	if err != nil {
 		fmt.Errorf("error from json.Unmarshal %w", err)
-		return errors.ErrorParsingData
+		return errors.ErrParsingData
 	}
 
 	for _, value := range users {
 		if value.ID == id {
-			if value.IsActive == false {
+			if !value.IsActive {
 				return errors.ErrIsActiveFalse
 			}
 			value.IsActive = true
@@ -221,13 +221,13 @@ func (s *UserStorage) Delete(id int) error {
 	btData, err := json.Marshal(users)
 	if err != nil {
 		fmt.Errorf("error from json.Marshal %w", err)
-		return errors.ErrorParsingData
+		return errors.ErrParsingData
 	}
 
-	err = os.WriteFile(s.FileName, btData, 0644)
+	err = os.WriteFile(s.fileName, btData, 0644)
 	if err != nil {
 		fmt.Errorf("error from os.WriteFile %w", err)
-		return errors.ErrorFromFile
+		return errors.ErrFromFile
 	}
 	return nil
 }

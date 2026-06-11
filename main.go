@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"log"
-	http "net/http"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/fnuritdinov/firstService/handlers"
+	"github.com/fnuritdinov/firstService/internal/config"
 	"github.com/fnuritdinov/firstService/internal/consumer"
 	"github.com/fnuritdinov/firstService/internal/rate_limiter"
 	"github.com/fnuritdinov/firstService/internal/service"
@@ -37,7 +38,12 @@ func main() {
 	rate := rate_limiter.New()
 	go rate.WorkerClear(ctx)
 
-	userStorage := storage.NewUserStorage("data/user.json")
+	cfg, err := config.New("./config/config.env")
+	if err != nil {
+		log.Fatal("config.New", err)
+	}
+
+	userStorage := storage.NewUserStorage(cfg.Storage)
 	userService := service.NewUserService(userStorage, bus)
 	userHandler := handlers.NewUserHandler(userService, *logger)
 
@@ -47,7 +53,7 @@ func main() {
 		middleware.Auth(handler)))
 
 	server := &http.Server{
-		Addr:    ":80",
+		Addr:    cfg.HttpPort,
 		Handler: handler2,
 	}
 
@@ -62,9 +68,7 @@ func main() {
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	///----------------------------------------------------//
 	<-stop
-	close(stop)
 
 	logger.Info("Shutdown started")
 	cancel()

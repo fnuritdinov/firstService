@@ -22,7 +22,7 @@ func New(devMode bool) (*Logger, error) {
 	var err error
 	logger, err := cfg.Build()
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return &Logger{
 		logger,

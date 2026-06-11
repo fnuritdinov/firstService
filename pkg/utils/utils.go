@@ -8,23 +8,18 @@ import (
 
 func ValidateID(id int) error {
 	if id < 1 {
-		return errors.ErrorFromValidateID
+		return errors.ErrFromValidateID
 	}
 	return nil
 }
 
 func ValidateStrEmpty(name string) error {
 	if len(name) == 0 {
-		return errors.ErrorFromValidateStrEmpty
+		return errors.ErrFromValidate
 	}
 	return nil
 }
 
-func StrToInt(str string) int {
-	n, _ := strconv.Atoi(str)
-	return n
-}
-
-func IntToStr(n int) string {
-	return strconv.Itoa(n)
+func StrToInt(str string) (int, error) {
+	return strconv.Atoi(str)
 }

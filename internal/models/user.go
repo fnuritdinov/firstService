@@ -14,16 +14,18 @@ type User struct {
 	IsActive bool   `json:"IsActive"`
 }
 
-func (u *User) ValidateID() error {
+func (u *User) Validate() error {
 	if u.ID < 1 {
-		return errors.ErrorFromValidateID
+		return errors.ErrFromValidate
 	}
-	return nil
-}
-
-func (u *User) ValidateStrEmpty() error {
 	if len(u.Name) == 0 {
-		return errors.ErrorFromValidateStrEmpty
+		return errors.ErrFromValidate
+	}
+	if u.Age < 1 {
+		return errors.ErrFromValidate
+	}
+	if len(u.Password) == 0 {
+		return errors.ErrFromValidate
 	}
 	return nil
 }

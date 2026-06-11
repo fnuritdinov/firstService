@@ -16,5 +16,4 @@ func New(handler *UserHandler) *http.ServeMux {
 	mux.HandleFunc("/login", handler.Login)
 
 	return mux
-
 }

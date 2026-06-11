@@ -50,7 +50,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Password: req.Password,
 	})
 	if err != nil {
-		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
+		if errors.Is(err, errs.ErrFromValidate) {
 			h.logger.Error("error from validateStrEmpty", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
@@ -58,8 +58,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	w.WriteHeader(http.StatusOK)
 }
 
 func (h *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
@@ -94,11 +92,15 @@ func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
-	id := utils.StrToInt(idStr)
-
-	user, err := h.service.GetUserByID(id)
+	id, err := utils.StrToInt(idStr)
 	if err != nil {
-		if errors.Is(err, errs.ErrorFromValidateID) {
+		h.logger.Error("error from utils.StrToInt")
+		return
+	}
+
+	user, err := h.service.GetUserByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, errs.ErrFromValidateID) {
 			h.logger.Error("error from validate",
 				zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -129,14 +131,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		IsActive: true,
 	})
 	if err != nil {
-		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
+		if errors.Is(err, errs.ErrFromValidate) {
 			h.logger.Error("error from errs.ErrorFromValidateStrEmpty",
 				zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		if errors.Is(err, errs.ErrorFromValidateID) {
+		if errors.Is(err, errs.ErrFromValidateID) {
 			h.logger.Error("error from ValidateID",
 				zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -155,23 +157,27 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	idStr := r.PathValue("id")
 
-	id := utils.StrToInt(idStr)
+	id, err := utils.StrToInt(idStr)
+	if err != nil {
+		h.logger.Error("error from utils.StrToInt")
+		return
+	}
 
 	var user models.User
-	err := json.NewDecoder(r.Body).Decode(&user)
+	err = json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	err = h.service.Update(id, user.Name)
+	err = h.service.Update(r.Context(), id, user.Name)
 	if err != nil {
-		if errors.Is(err, errs.ErrorFromValidateID) {
+		if errors.Is(err, errs.ErrFromValidateID) {
 			h.logger.Error("error from ValidateID", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if errors.Is(err, errs.ErrorFromValidateStrEmpty) {
+		if errors.Is(err, errs.ErrFromValidate) {
 			h.logger.Error("error from ValidateStrEmpty", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -188,13 +194,17 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 
-	id := utils.StrToInt(idStr)
+	id, err := utils.StrToInt(idStr)
+	if err != nil {
+		h.logger.Error("error from utils.StrToInt")
+		return
+	}
 
-	err := h.service.Delete(id)
+	err = h.service.Delete(r.Context(), id)
 	h.logger.Error("error from service",
 		zap.Error(err))
 	if err != nil {
-		if errors.Is(err, errs.ErrorFromValidateID) {
+		if errors.Is(err, errs.ErrFromValidateID) {
 			h.logger.Error("error from ValidateID", zap.Error(err))
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return

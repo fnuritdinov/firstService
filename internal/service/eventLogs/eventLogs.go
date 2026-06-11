@@ -51,13 +51,13 @@ func Audit(userID int, method, description string) error {
 
 	file, err := os.OpenFile("data/logs.txt", os.O_CREATE|os.O_RDWR|os.O_APPEND, 0644)
 	if err != nil {
-		return errs.ErrorFromFile
+		return errs.ErrFromFile
 	}
 	defer file.Close()
 
 	_, err = file.WriteString(fmt.Sprintf("log audit %+v\n", log))
 	if err != nil {
-		return errs.ErrorFromFile
+		return errs.ErrFromFile
 	}
 	return nil
 }

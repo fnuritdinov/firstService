@@ -19,7 +19,10 @@ func StartAuditConsumer(ctx context.Context, wg *sync.WaitGroup, bus *eventBus.B
 			case <-ctx.Done():
 				return
 			case event := <-bus.Subscribe():
-				eventLogs.Audit(event.UserID, event.Type, "message from bus.Subscribe")
+				err := eventLogs.Audit(event.UserID, event.Type, "message from bus.Subscribe")
+				if err != nil {
+					return
+				}
 			}
 		}
 	}()
