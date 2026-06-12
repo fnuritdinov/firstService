@@ -27,3 +27,5 @@ log audit {UserID:2175057770096505148 Method:Сreate Description:Создал п
 log audit {UserID:425597791273453943 Method:Сreate Description:message from bus.Subscribe CreatedAt:2026-06-06 19:41:28.1207755 +0500 +05 m=+5.396645901}
 log audit {UserID:1142796851412969747 Method:Сreate Description:Создал пользователя CreatedAt:2026-06-06 19:41:51.9142056 +0500 +05 m=+29.190076001}
 log audit {UserID:7135007260309687949 Method:Сreate Description:message from bus.Subscribe CreatedAt:2026-06-06 19:41:51.9226683 +0500 +05 m=+29.198538701}
+log audit {UserID:1687591983332469444 Method:Сreate Description:Создал пользователя CreatedAt:2026-06-12 19:19:25.8032649 +0500 +05 m=+13.381245501}
+log audit {UserID:4580763360452457399 Method:Сreate Description:message from bus.Subscribe CreatedAt:2026-06-12 19:19:25.8213082 +0500 +05 m=+13.399288801}

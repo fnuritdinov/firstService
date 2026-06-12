@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/fnuritdinov/firstService/internal/rate_limiter"
@@ -10,7 +11,10 @@ import (
 func RateLimit(rate *rate_limiter.RateLimiter, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		userID := utils.StrToInt(r.Header.Get("UserID"))
+		userID, err := utils.StrToInt(r.Header.Get("UserID"))
+		if err != nil {
+			fmt.Errorf("error from utils.StrToInt %w", err)
+		}
 
 		ok := rate.Allow(r.Context(), userID)
 		if !ok {

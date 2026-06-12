@@ -14,10 +14,11 @@ import (
 	"github.com/fnuritdinov/firstService/internal/config"
 	"github.com/fnuritdinov/firstService/internal/consumer"
 	"github.com/fnuritdinov/firstService/internal/rate_limiter"
+	"github.com/fnuritdinov/firstService/internal/repository"
 	"github.com/fnuritdinov/firstService/internal/service"
 	"github.com/fnuritdinov/firstService/internal/service/eventBus"
-	"github.com/fnuritdinov/firstService/internal/storage"
 	"github.com/fnuritdinov/firstService/middleware"
+	db2 "github.com/fnuritdinov/firstService/pkg/db"
 	"github.com/fnuritdinov/firstService/pkg/logger"
 	"go.uber.org/zap"
 )
@@ -29,6 +30,24 @@ func main() {
 	}
 	bus := eventBus.NewBus(10)
 
+	cfg, err := config.New("./config/config.env")
+	if err != nil {
+		log.Fatal("config.New", err)
+	}
+
+	db, err := db2.New(db2.Options{
+		Host:     cfg.DBHOST,
+		Port:     cfg.DBPORT,
+		User:     cfg.DBUSER,
+		Password: cfg.DBPASSWORD,
+		DBName:   cfg.DBName,
+	})
+	if err != nil {
+		log.Fatal("failed to connect to db:", err)
+		return
+	}
+	defer db.Close()
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	var wg sync.WaitGroup
@@ -36,14 +55,10 @@ func main() {
 	consumer.StartAuditConsumer(ctx, &wg, bus, *logger)
 
 	rate := rate_limiter.New()
+
 	go rate.WorkerClear(ctx)
 
-	cfg, err := config.New("./config/config.env")
-	if err != nil {
-		log.Fatal("config.New", err)
-	}
-
-	userStorage := storage.NewUserStorage(cfg.Storage)
+	userStorage := repository.New(db)
 	userService := service.NewUserService(userStorage, bus)
 	userHandler := handlers.NewUserHandler(userService, *logger)
 

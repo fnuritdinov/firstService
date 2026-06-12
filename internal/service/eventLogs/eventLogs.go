@@ -21,6 +21,7 @@ const GetUserByID = "GetUserByID"
 const Update = "Update"
 const Delete = "Delete"
 const Get = "Get"
+const Login = "Login"
 
 func Audit(userID int, method, description string) error {
 
@@ -37,6 +38,8 @@ func Audit(userID int, method, description string) error {
 		fmt.Printf("%d удалил пользователя", userID)
 	case Get:
 		fmt.Printf("%d получил активных пользователя", userID)
+	case Login:
+		fmt.Printf("%d пользователь залогинился", userID)
 
 	default:
 		fmt.Println("unknown audit method")
