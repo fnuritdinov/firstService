@@ -23,3 +23,10 @@ func ValidateStrEmpty(name string) error {
 func StrToInt(str string) (int, error) {
 	return strconv.Atoi(str)
 }
+
+func ValidateInt(num int) error {
+	if num < 1 {
+		return errors.ErrFromValidate
+	}
+	return nil
+}

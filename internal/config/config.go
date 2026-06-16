@@ -6,6 +6,9 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
+const Authorization = "Authorization"
+const SecretKey = "secret"
+
 type Config struct {
 	HttpPort string `env:"HTTP_PORT"`
 	Storage  string `env:"STORAGE"`

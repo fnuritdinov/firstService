@@ -22,12 +22,14 @@ const Update = "Update"
 const Delete = "Delete"
 const Get = "Get"
 const Login = "Login"
+const UpdatePassword = "UpdatePassword"
+const UpdateAge = "UpdateAge"
 
 func Audit(userID int, method, description string) error {
 
 	switch method {
 	case Create:
-		fmt.Println("%d создал пользователя ", userID)
+		fmt.Printf("%d создал пользователя ", userID)
 	case GetAll:
 		fmt.Printf("%d получил всех пользователей", userID)
 	case GetUserByID:
@@ -39,7 +41,11 @@ func Audit(userID int, method, description string) error {
 	case Get:
 		fmt.Printf("%d получил активных пользователя", userID)
 	case Login:
-		fmt.Printf("%d пользователь залогинился", userID)
+		fmt.Printf("%d залогинился", userID)
+	case UpdatePassword:
+		fmt.Printf("%d изменил пароль", userID)
+	case UpdateAge:
+		fmt.Printf("%d изменил возраст", userID)
 
 	default:
 		fmt.Println("unknown audit method")

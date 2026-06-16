@@ -150,18 +150,14 @@ func (u *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		}
 		http.Error(w, "invalid request", http.StatusInternalServerError)
 		return
-
 	}
 
 	w.WriteHeader(http.StatusCreated)
-
 }
 
 func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
-	idStr := r.PathValue("id")
-
-	id, err := utils.StrToInt(idStr)
+	id, err := utils.StrToInt(r.PathValue("id"))
 	if err != nil {
 		u.logger.Error("error from utils.StrToInt")
 		return
@@ -196,9 +192,7 @@ func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := utils.StrToInt(idStr)
+	id, err := utils.StrToInt(r.PathValue("id"))
 	if err != nil {
 		u.logger.Error("error from utils.StrToInt")
 		return
@@ -218,4 +212,105 @@ func (u *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+type updatePasswordReq struct {
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
+}
+
+func (u *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
+
+	id, err := utils.StrToInt(r.PathValue("id"))
+	if err != nil {
+		u.logger.Error("error from utils.StrToInt")
+		return
+	}
+
+	var pass updatePasswordReq
+	err = json.NewDecoder(r.Body).Decode(&pass)
+	if err != nil {
+		u.logger.Error("error from json.NewDecoder")
+		return
+	}
+
+	u.logger.Info("handler UpdatePassword",
+		zap.Int("user_id", id),
+		zap.Any("request", pass),
+	)
+
+	err = u.service.UpdatePassword(r.Context(), id, models.Auth{
+		OldPassword: pass.OldPassword,
+		NewPassword: pass.NewPassword,
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, errs.ErrBadRequest) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, errs.ErrFromValidate) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		if errors.Is(err, errs.ErrWrongPassword) {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+		u.logger.Error("error from u.service.UpdatePassword",
+			zap.Error(err))
+		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message": "password updated successfully",
+	})
+}
+
+func (u *UserHandler) UpdateAge(w http.ResponseWriter, r *http.Request) {
+
+	id, err := utils.StrToInt(r.PathValue("id"))
+	if err != nil {
+		u.logger.Error("error from utils.StrToInt")
+		return
+	}
+
+	var req userRequest
+	err = json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = u.service.UpdateAge(r.Context(), id, models.User{
+		Age: req.Age,
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrFromValidate) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, errs.ErrIsActiveFalse) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, errs.ErrNotFound) {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		u.logger.Error("error from u.service.UpdateAge",
+			zap.Error(err))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message": "age updated successfully",
+	})
 }

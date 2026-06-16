@@ -7,10 +7,13 @@ import (
 )
 
 type User struct {
-	ID       int    `json:"id"`
-	Name     string `json:"name"`
-	Age      int    `json:"age"`
-	IsActive bool   `json:"IsActive"`
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Age         int    `json:"age"`
+	IsActive    bool   `json:"IsActive"`
+	Password    string `json:"password"`
+	OldPassword string `json:"oldPassword"`
+	NewPassword string `json:"newPassword"`
 }
 
 func (u *User) Validate() error {

@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
+	"strings"
 
 	"github.com/fnuritdinov/firstService/internal/models"
 	"github.com/fnuritdinov/firstService/internal/repository"
@@ -21,6 +23,8 @@ type IUserService interface {
 	Create(ctx context.Context, user models.User) error
 	Update(ctx context.Context, id int, updatedName string) error
 	Delete(ctx context.Context, id int) error
+	UpdatePassword(ctx context.Context, id int, pass models.Auth) error
+	UpdateAge(ctx context.Context, id int, user models.User) error
 }
 
 type service struct {
@@ -38,7 +42,7 @@ func NewUserService(repository repository.IUserRepo, eventsBus *eventBus.Bus) IU
 func (s *service) Login(ctx context.Context, auth models.Auth) error {
 	err := auth.ValidateAuth()
 	if err != nil {
-		return errors.ErrFromValidate
+		return err
 	}
 
 	err = s.repository.Login(ctx, auth)
@@ -192,6 +196,86 @@ func (s *service) Delete(ctx context.Context, id int) error {
 
 	s.eventsBus.Publish(eventBus.Event{
 		Type:   eventLogs.Delete,
+		UserID: rand.Int(),
+	})
+
+	return nil
+}
+
+func (s *service) UpdatePassword(ctx context.Context, id int, pass models.Auth) error {
+	err := utils.ValidateID(id)
+	if err != nil {
+		return err
+	}
+
+	err = pass.ValidateAuthPassword()
+	if err != nil {
+		return err
+	}
+
+	user, err := s.repository.GetUser(ctx, id, models.User{
+		OldPassword: pass.OldPassword,
+	})
+	if err != nil {
+		return err
+	}
+
+	if strings.TrimSpace(user.Password) != strings.TrimSpace(pass.OldPassword) {
+		log.Println("user.Password", user.Password)
+		log.Println("pass.OldPassword", pass.OldPassword)
+		return errors.ErrWrongPassword
+	}
+
+	err = s.repository.UpdatePassword(ctx, models.User{
+		ID:          id,
+		NewPassword: pass.NewPassword,
+	})
+	if err != nil {
+		return err
+	}
+
+	err = eventLogs.Audit(rand.Int(), eventLogs.UpdatePassword, "изменил пароль")
+	if err != nil {
+		return fmt.Errorf("error from eventLogs.Audit %w", err)
+	}
+
+	s.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.UpdatePassword,
+		UserID: rand.Int(),
+	})
+	return nil
+}
+
+func (s *service) UpdateAge(ctx context.Context, id int, req models.User) error {
+	err := utils.ValidateID(id)
+	if err != nil {
+		return err
+	}
+
+	err = utils.ValidateInt(req.Age)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.repository.GetUser(ctx, id, models.User{
+		ID: id,
+	})
+	if err != nil {
+		return fmt.Errorf("error from s.repository.SelectUser %w", err)
+	}
+
+	err = s.repository.UpdateAge(ctx, req.Age, id)
+	if err != nil {
+		return fmt.Errorf("error from s.repository.UpdateAge")
+	}
+
+	err = eventLogs.Audit(rand.Int(), eventLogs.UpdateAge, "изменил возраст")
+	if err != nil {
+		return fmt.Errorf("error from eventLogs.Audit %w", err)
+	}
+
+	s.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.UpdateAge,
 		UserID: rand.Int(),
 	})
 
