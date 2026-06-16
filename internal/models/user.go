@@ -30,3 +30,10 @@ func (u *User) Validate() error {
 
 	return nil
 }
+
+type UserStats struct {
+	TotalUsers    int     `json:"totalUsers"`
+	ActiveUsers   int     `json:"activeUsers"`
+	InActiveUsers int     `json:"inActiveUsers"`
+	AverageAge    float64 `json:"averageAge"`
+}

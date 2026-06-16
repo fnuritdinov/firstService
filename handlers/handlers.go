@@ -64,63 +64,6 @@ func (u *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (u *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-
-	users, err := u.service.GetAll(r.Context())
-	if err != nil {
-		u.logger.Error("error from h.service.GetAll", zap.Error(err))
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(users)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func (u *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
-	users, err := u.service.Get(r.Context())
-	if err != nil {
-		u.logger.Error("error from h.service.GetAll", zap.Error(err))
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-
-	err = json.NewEncoder(w).Encode(users)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
-func (u *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-
-	id, err := utils.StrToInt(idStr)
-	if err != nil {
-		u.logger.Error("error from utils.StrToInt")
-		return
-	}
-
-	user, err := u.service.GetUserByID(r.Context(), id)
-	if err != nil {
-		if errors.Is(err, errs.ErrFromValidateID) {
-			u.logger.Error("error from validate",
-				zap.Error(err))
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err := json.NewEncoder(w).Encode(user); err != nil {
-		http.Error(w, "invalid request", http.StatusInternalServerError)
-		return
-	}
-
-}
-
 func (u *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var user userRequest
 	err := json.NewDecoder(r.Body).Decode(&user)
@@ -189,6 +132,63 @@ func (u *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (u *UserHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+
+	users, err := u.service.GetAll(r.Context())
+	if err != nil {
+		u.logger.Error("error from h.service.GetAll", zap.Error(err))
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (u *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
+	users, err := u.service.Get(r.Context())
+	if err != nil {
+		u.logger.Error("error from h.service.GetAll", zap.Error(err))
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (u *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+
+	id, err := utils.StrToInt(idStr)
+	if err != nil {
+		u.logger.Error("error from utils.StrToInt")
+		return
+	}
+
+	user, err := u.service.GetUserByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, errs.ErrFromValidateID) {
+			u.logger.Error("error from validate",
+				zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(user); err != nil {
+		http.Error(w, "invalid request", http.StatusInternalServerError)
+		return
+	}
+
 }
 
 func (u *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -313,4 +313,22 @@ func (u *UserHandler) UpdateAge(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(map[string]string{
 		"message": "age updated successfully",
 	})
+}
+
+func (u *UserHandler) GetUsersStats(w http.ResponseWriter, r *http.Request) {
+
+	users, err := u.service.GetUsersStats(r.Context())
+	if err != nil {
+		u.logger.Error("error from u.service.GetUsersStats",
+			zap.Error(err))
+		http.Error(w, "invalid error", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	err = json.NewEncoder(w).Encode(users)
+	if err != nil {
+		u.logger.Error("error from json.Encoder", zap.Error(err))
+	}
 }

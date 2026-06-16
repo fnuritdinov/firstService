@@ -54,78 +54,6 @@ func (r *repo) Login(ctx context.Context, auth models.Auth) error {
 
 }
 
-func (r *repo) GetAll(ctx context.Context) ([]models.User, error) {
-
-	const query = `
-		SELECT name, age, password, is_active 
-			FROM users 
-		WHERE id = ANY($1);`
-
-	rows, err := r.db.Query(query)
-	if err != nil {
-		return []models.User{}, fmt.Errorf("error from r.db.Query %w", err)
-	}
-	defer rows.Close()
-
-	var users []models.User
-
-	for rows.Next() {
-		var user models.User
-		if err = rows.Scan(&user.ID, &user.Name, &user.Age, &user.IsActive); err != nil {
-			return []models.User{}, fmt.Errorf("error from rows.Scan %w", err)
-		}
-		users = append(users, user)
-	}
-	if err = rows.Err(); err != nil {
-		return []models.User{}, fmt.Errorf("error from rows.Err() %w", err)
-	}
-	return users, nil
-}
-
-func (r *repo) Get(ctx context.Context) ([]models.User, error) {
-
-	const query = `
-		SELECT id, name, age, is_active 
-			FROM users 
-		WHERE is_active = false;`
-
-	rows, err := r.db.Query(query)
-	if err != nil {
-		return []models.User{}, fmt.Errorf("error from r.db.Query %w", err)
-	}
-	defer rows.Close()
-
-	users := make([]models.User, 0)
-	for rows.Next() {
-		var user models.User
-		if err = rows.Scan(&user.ID, &user.Name, &user.Age, &user.IsActive); err != nil {
-			return []models.User{}, fmt.Errorf("error from rows.Scan %w", err)
-		}
-		users = append(users, user)
-	}
-	if err = rows.Err(); err != nil {
-		return []models.User{}, fmt.Errorf("error from rows.Err() %w", err)
-	}
-	return users, nil
-}
-
-func (r *repo) GetByID(ctx context.Context, id int) (models.User, error) {
-	var user models.User
-	const query = `
-		SELECT id, name, age, is_active 
-			FROM users 
-		WHERE id = $1;`
-	err := r.db.QueryRow(query, id).Scan(
-		&user.ID,
-		&user.Name,
-		&user.Age,
-		&user.IsActive)
-	if err != nil {
-		return models.User{}, fmt.Errorf("error from r.db.QueryRow %w", err)
-	}
-	return user, nil
-}
-
 func (r *repo) Create(ctx context.Context, user models.User) error {
 
 	const query = `
@@ -169,6 +97,77 @@ func (r *repo) Update(ctx context.Context, id int, updatedUser string) error {
 		return errs.ErrNotFound
 	}
 	return nil
+}
+
+func (r *repo) GetAll(ctx context.Context) ([]models.User, error) {
+
+	const query = `
+		SELECT name, age, is_active 
+			FROM users;`
+
+	rows, err := r.db.Query(query)
+	if err != nil {
+		return []models.User{}, fmt.Errorf("error from r.db.Query %w", err)
+	}
+	defer rows.Close()
+
+	var users []models.User
+
+	for rows.Next() {
+		var user models.User
+		if err = rows.Scan(&user.Name, &user.Age, &user.IsActive); err != nil {
+			return []models.User{}, fmt.Errorf("error from rows.Scan %w", err)
+		}
+		users = append(users, user)
+	}
+	if err = rows.Err(); err != nil {
+		return []models.User{}, fmt.Errorf("error from rows.Err() %w", err)
+	}
+	return users, nil
+}
+
+func (r *repo) Get(ctx context.Context) ([]models.User, error) {
+
+	const query = `
+		SELECT id, name, age, is_active 
+			FROM users 
+		WHERE is_active = $1;`
+
+	rows, err := r.db.Query(query, true)
+	if err != nil {
+		return []models.User{}, fmt.Errorf("error from r.db.Query %w", err)
+	}
+	defer rows.Close()
+
+	users := make([]models.User, 0)
+	for rows.Next() {
+		var user models.User
+		if err = rows.Scan(&user.ID, &user.Name, &user.Age, &user.IsActive); err != nil {
+			return []models.User{}, fmt.Errorf("error from rows.Scan %w", err)
+		}
+		users = append(users, user)
+	}
+	if err = rows.Err(); err != nil {
+		return []models.User{}, fmt.Errorf("error from rows.Err() %w", err)
+	}
+	return users, nil
+}
+
+func (r *repo) GetByID(ctx context.Context, id int) (models.User, error) {
+	var user models.User
+	const query = `
+		SELECT id, name, age, is_active 
+			FROM users 
+		WHERE id = $1;`
+	err := r.db.QueryRow(query, id).Scan(
+		&user.ID,
+		&user.Name,
+		&user.Age,
+		&user.IsActive)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error from r.db.QueryRow %w", err)
+	}
+	return user, nil
 }
 
 func (r *repo) Delete(ctx context.Context, id int) error {

@@ -17,14 +17,15 @@ import (
 
 type IUserService interface {
 	Login(ctx context.Context, auth models.Auth) error
+	Create(ctx context.Context, user models.User) error
+	Update(ctx context.Context, id int, updatedName string) error
 	GetAll(ctx context.Context) ([]models.User, error)
 	Get(ctx context.Context) ([]models.User, error)
 	GetUserByID(ctx context.Context, id int) (models.User, error)
-	Create(ctx context.Context, user models.User) error
-	Update(ctx context.Context, id int, updatedName string) error
 	Delete(ctx context.Context, id int) error
 	UpdatePassword(ctx context.Context, id int, pass models.Auth) error
 	UpdateAge(ctx context.Context, id int, user models.User) error
+	GetUsersStats(ctx context.Context) (models.UserStats, error)
 }
 
 type service struct {
@@ -59,6 +60,60 @@ func (s *service) Login(ctx context.Context, auth models.Auth) error {
 		Type:   eventLogs.Login,
 		UserID: rand.Int(),
 	})
+	return nil
+}
+
+func (s *service) Create(ctx context.Context, user models.User) error {
+	err := user.Validate()
+	if err != nil {
+		return errors.ErrFromValidate
+	}
+
+	err = s.repository.Create(ctx, user)
+	if err != nil {
+		return errors.ErrNotFound
+	}
+
+	err = eventLogs.Audit(rand.Int(), eventLogs.Create, "Создал пользователя")
+	if err != nil {
+		return fmt.Errorf("error from eventLogs.Audit %w", err)
+	}
+
+	s.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.Create,
+		UserID: rand.Int(),
+	})
+
+	return nil
+
+}
+
+func (s *service) Update(ctx context.Context, id int, updatedName string) error {
+	err := utils.ValidateID(id)
+	if err != nil {
+		return errors.ErrFromValidateID
+	}
+
+	err = utils.ValidateStrEmpty(updatedName)
+	if err != nil {
+		return errors.ErrFromValidate
+	}
+
+	err = s.repository.Update(ctx, id, updatedName)
+	if err != nil {
+		return errors.ErrNotFound
+	}
+
+	err = eventLogs.Audit(rand.Int(), eventLogs.Update, "Изменил пользователя")
+	if err != nil {
+		return fmt.Errorf("error from eventLogs.Audit %w", err)
+	}
+
+	s.eventsBus.Publish(eventBus.Event{
+		Type:   eventLogs.Update,
+		UserID: rand.Int(),
+	})
+
 	return nil
 }
 
@@ -122,60 +177,6 @@ func (s *service) GetUserByID(ctx context.Context, id int) (models.User, error) 
 	})
 
 	return user, nil
-}
-
-func (s *service) Create(ctx context.Context, user models.User) error {
-	err := user.Validate()
-	if err != nil {
-		return errors.ErrFromValidate
-	}
-
-	err = s.repository.Create(ctx, user)
-	if err != nil {
-		return errors.ErrNotFound
-	}
-
-	err = eventLogs.Audit(rand.Int(), eventLogs.Create, "Создал пользователя")
-	if err != nil {
-		return fmt.Errorf("error from eventLogs.Audit %w", err)
-	}
-
-	s.eventsBus.Publish(eventBus.Event{
-		Type:   eventLogs.Create,
-		UserID: rand.Int(),
-	})
-
-	return nil
-
-}
-
-func (s *service) Update(ctx context.Context, id int, updatedName string) error {
-	err := utils.ValidateID(id)
-	if err != nil {
-		return errors.ErrFromValidateID
-	}
-
-	err = utils.ValidateStrEmpty(updatedName)
-	if err != nil {
-		return errors.ErrFromValidate
-	}
-
-	err = s.repository.Update(ctx, id, updatedName)
-	if err != nil {
-		return errors.ErrNotFound
-	}
-
-	err = eventLogs.Audit(rand.Int(), eventLogs.Update, "Изменил пользователя")
-	if err != nil {
-		return fmt.Errorf("error from eventLogs.Audit %w", err)
-	}
-
-	s.eventsBus.Publish(eventBus.Event{
-		Type:   eventLogs.Update,
-		UserID: rand.Int(),
-	})
-
-	return nil
 }
 
 func (s *service) Delete(ctx context.Context, id int) error {
@@ -261,12 +262,12 @@ func (s *service) UpdateAge(ctx context.Context, id int, req models.User) error 
 		ID: id,
 	})
 	if err != nil {
-		return fmt.Errorf("error from s.repository.SelectUser %w", err)
+		return err
 	}
 
 	err = s.repository.UpdateAge(ctx, req.Age, id)
 	if err != nil {
-		return fmt.Errorf("error from s.repository.UpdateAge")
+		return err
 	}
 
 	err = eventLogs.Audit(rand.Int(), eventLogs.UpdateAge, "изменил возраст")
@@ -280,4 +281,48 @@ func (s *service) UpdateAge(ctx context.Context, id int, req models.User) error 
 	})
 
 	return nil
+}
+
+func (s *service) GetUsersStats(ctx context.Context) (models.UserStats, error) {
+
+	allUsers, err := s.repository.GetAll(ctx)
+	if err != nil {
+		return models.UserStats{}, err
+	}
+
+	activeUsers, err := s.repository.Get(ctx)
+	if err != nil {
+		return models.UserStats{}, err
+	}
+
+	var totalUsers int
+	var totalActiveUsers int
+	var averageAge float64
+	var sumAge int
+
+	for _, all := range allUsers {
+		sumAge += all.Age
+		totalUsers++
+
+	}
+
+	if totalUsers == 0 {
+		averageAge = 0
+	} else {
+		averageAge = float64(sumAge) / float64(totalUsers)
+	}
+
+	for _, active := range activeUsers {
+		totalActiveUsers++
+		fmt.Println(active)
+	}
+
+	inActiveUsers := totalUsers - totalActiveUsers
+
+	return models.UserStats{
+		TotalUsers:    totalUsers,
+		ActiveUsers:   totalActiveUsers,
+		InActiveUsers: inActiveUsers,
+		AverageAge:    averageAge,
+	}, nil
 }
