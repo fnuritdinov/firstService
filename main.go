@@ -17,6 +17,7 @@ import (
 	"github.com/fnuritdinov/firstService/internal/repository"
 	"github.com/fnuritdinov/firstService/internal/service"
 	"github.com/fnuritdinov/firstService/internal/service/eventBus"
+	"github.com/fnuritdinov/firstService/internal/unit_of_work"
 	"github.com/fnuritdinov/firstService/middleware"
 	db2 "github.com/fnuritdinov/firstService/pkg/db"
 	"github.com/fnuritdinov/firstService/pkg/logger"
@@ -58,7 +59,9 @@ func main() {
 
 	go rate.WorkerClear(ctx)
 
-	userStorage := repository.New(db)
+	unit := unit_of_work.New(db)
+
+	userStorage := repository.New(db, *unit)
 	userService := service.NewUserService(userStorage, bus)
 	userHandler := handlers.NewUserHandler(userService, *logger)
 

@@ -14,6 +14,8 @@ type User struct {
 	Password    string `json:"password"`
 	OldPassword string `json:"oldPassword"`
 	NewPassword string `json:"newPassword"`
+	FromUserID  int    `json:"fromUserID"`
+	ToUserID    int    `json:"toUserID"`
 }
 
 func (u *User) Validate() error {

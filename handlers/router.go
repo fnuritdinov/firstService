@@ -17,6 +17,7 @@ func New(handler *UserHandler) *http.ServeMux {
 	mux.HandleFunc("PATCH /users/{id}/password", handler.UpdatePassword)
 	mux.HandleFunc("PATCH /users/{id}/age", handler.UpdateAge)
 	mux.HandleFunc("GET /users/stats", handler.GetUsersStats)
+	mux.HandleFunc("POST /users/transfer-age", handler.TransferAge)
 
 	return mux
 }

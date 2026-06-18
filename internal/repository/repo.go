@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/fnuritdinov/firstService/internal/models"
+	"github.com/fnuritdinov/firstService/internal/unit_of_work"
 	errs "github.com/fnuritdinov/firstService/pkg/errors"
 )
 
@@ -19,16 +20,19 @@ type IUserRepo interface {
 	Update(ctx context.Context, id int, updatedUser string) error
 	Delete(ctx context.Context, id int) error
 	UpdatePassword(ctx context.Context, pass models.User) error
-	GetUser(ctx context.Context, id int, auth models.User) (models.User, error)
+	GetUser(ctx context.Context, id int, req models.User) (models.User, error)
 	UpdateAge(ctx context.Context, req int, id int) error
+	UpdateTwoUsersAge(ctx context.Context, req models.User) error
 }
 type repo struct {
-	db *sql.DB
+	db   *sql.DB
+	unit unit_of_work.TransactionManager
 }
 
-func New(db *sql.DB) IUserRepo {
+func New(db *sql.DB, unit unit_of_work.TransactionManager) IUserRepo {
 	return &repo{
-		db: db,
+		db:   db,
+		unit: unit,
 	}
 }
 
@@ -102,7 +106,7 @@ func (r *repo) Update(ctx context.Context, id int, updatedUser string) error {
 func (r *repo) GetAll(ctx context.Context) ([]models.User, error) {
 
 	const query = `
-		SELECT name, age, is_active 
+		SELECT id, name, age, is_active 
 			FROM users;`
 
 	rows, err := r.db.Query(query)
@@ -115,7 +119,7 @@ func (r *repo) GetAll(ctx context.Context) ([]models.User, error) {
 
 	for rows.Next() {
 		var user models.User
-		if err = rows.Scan(&user.Name, &user.Age, &user.IsActive); err != nil {
+		if err = rows.Scan(&user.ID, &user.Name, &user.Age, &user.IsActive); err != nil {
 			return []models.User{}, fmt.Errorf("error from rows.Scan %w", err)
 		}
 		users = append(users, user)
@@ -265,5 +269,55 @@ func (r *repo) UpdateAge(ctx context.Context, age int, id int) error {
 	if rowsAffected == 0 {
 		return errs.ErrNotFound
 	}
+	return nil
+}
+
+func (r *repo) UpdateTwoUsersAge(ctx context.Context, req models.User) error {
+	tx, err := r.unit.BeginTx(ctx)
+	if err != nil {
+		return fmt.Errorf("error from r.unit.BeginTX %w", err)
+	}
+
+	defer func() {
+		_ = tx.Rollback()
+	}()
+
+	const queryUpdate = `UPDATE users SET age = age - $2 WHERE id = $1`
+
+	rows, err := tx.Exec(queryUpdate, req.FromUserID, req.Age)
+	if err != nil {
+		return fmt.Errorf("error from r.db.Exec %w", err)
+	}
+
+	rowsAffected, err := rows.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error from rows.RowsAffected %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return errs.ErrNotFound
+	}
+
+	const queryInsert = `UPDATE users SET age = age + $2 WHERE id = $1`
+
+	row, err := tx.Exec(queryInsert, req.ToUserID, req.Age)
+	if err != nil {
+		return fmt.Errorf("error from r.db.Exec %w", err)
+	}
+
+	rowsAffect, err := row.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error from row.RowsAffected")
+	}
+
+	if rowsAffect == 0 {
+		return errs.ErrNotFound
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("error from tx.Commit %w", err)
+	}
+
 	return nil
 }

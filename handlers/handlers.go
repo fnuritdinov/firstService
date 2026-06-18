@@ -332,3 +332,57 @@ func (u *UserHandler) GetUsersStats(w http.ResponseWriter, r *http.Request) {
 		u.logger.Error("error from json.Encoder", zap.Error(err))
 	}
 }
+
+type transferAgeRequest struct {
+	FromUserID int `json:"fromUserID"`
+	ToUserID   int `json:"toUserID"`
+	Age        int `json:"age"`
+}
+
+func (u *UserHandler) TransferAge(w http.ResponseWriter, r *http.Request) {
+	var req transferAgeRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		u.logger.Error("error from json.NewDecoder")
+		return
+	}
+
+	err = u.service.TransferAge(r.Context(), models.User{
+		FromUserID: req.FromUserID,
+		ToUserID:   req.ToUserID,
+		Age:        req.Age,
+	})
+	if err != nil {
+		if errors.Is(err, errs.ErrFromValidate) {
+			u.logger.Error("error from validate", zap.Error(err))
+			http.Error(w, "error from validate", http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, errs.ErrIsActiveFalse) {
+			u.logger.Error("error from status", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, errs.ErrNotFound) {
+			u.logger.Error("not found")
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, errs.ErrBadRequest) {
+			u.logger.Error("invalid request", zap.Error(err))
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		u.logger.Error("error from u.service.TransferAge",
+			zap.Error(err))
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"message": "ages of users successfully updated",
+	})
+
+}

@@ -26,6 +26,7 @@ type IUserService interface {
 	UpdatePassword(ctx context.Context, id int, pass models.Auth) error
 	UpdateAge(ctx context.Context, id int, user models.User) error
 	GetUsersStats(ctx context.Context) (models.UserStats, error)
+	TransferAge(ctx context.Context, user models.User) error
 }
 
 type service struct {
@@ -325,4 +326,68 @@ func (s *service) GetUsersStats(ctx context.Context) (models.UserStats, error) {
 		InActiveUsers: inActiveUsers,
 		AverageAge:    averageAge,
 	}, nil
+}
+
+func (s *service) TransferAge(ctx context.Context, req models.User) error {
+	err := utils.ValidateInt(req.FromUserID)
+	if err != nil {
+		return err
+	}
+
+	err = utils.ValidateInt(req.ToUserID)
+	if err != nil {
+		return err
+	}
+
+	err = utils.ValidateInt(req.Age)
+	if err != nil {
+		return err
+	}
+
+	if req.FromUserID == req.ToUserID {
+		return errors.ErrBadRequest
+	}
+
+	users, err := s.repository.Get(ctx)
+	if err != nil {
+		return err
+	}
+
+	var fromFound bool
+	var toFound bool
+
+	for _, user := range users {
+		if user.ID == req.FromUserID {
+			fromFound = true
+
+			if !user.IsActive {
+				return errors.ErrIsActiveFalse
+			}
+
+			if user.Age <= req.Age {
+				return errors.ErrBadRequest
+			}
+		}
+
+		if user.ID == req.ToUserID {
+			toFound = true
+
+			if !user.IsActive {
+				return errors.ErrIsActiveFalse
+			}
+		}
+	}
+	fmt.Println("FromUserID:", req.FromUserID)
+	fmt.Println("ToUserID:", req.ToUserID)
+
+	if !fromFound || !toFound {
+		return errors.ErrNotFound
+	}
+
+	err = s.repository.UpdateTwoUsersAge(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
